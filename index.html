@@ -45,7 +45,11 @@
   .punto { width: 14px; height: 14px; border-radius: 50%; background: #8A94A6; flex: none; }
   .punto.on { background: var(--rec); animation: parpadeo 1.2s ease-in-out infinite; }
   @keyframes parpadeo { 50% { opacity: .35; } }
-  #formulario { flex: 1; width: 100%; border: 0; background: #fff; min-height: 70dvh; }
+  #panel { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 520px; width: 100%; margin: 0 auto; }
+  .reloj { font-size: 56px; font-weight: 800; text-align: center; letter-spacing: 2px; margin: 4px 0; font-variant-numeric: tabular-nums; }
+  .reloj.on { color: var(--rec); }
+  .paso { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; line-height: 1.4; }
+  .paso b.n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; }
 
   /* Ventanas */
   .velo { position: fixed; inset: 0; background: rgba(20,33,61,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
@@ -93,8 +97,8 @@
       <ol class="pasos">
         <li>Activa la <b>ubicación</b> (alta precisión) y los <b>datos móviles</b>.</li>
         <li>La primera vez, toca <b>Permitir</b> cuando pida ubicación y micrófono.</li>
-        <li>Durante la entrevista <b>no salgas de esta página</b> ni cambies de app: la grabación se detiene.</li>
-        <li>Al terminar, toca <b>Terminar entrevista</b> para que el audio se suba.</li>
+        <li>El cuestionario se abre en otra pestaña. <b>No cierres esta página</b> ni cambies de app: aquí se graba.</li>
+        <li>Al enviar el cuestionario, cierra su pestaña y toca <b>Terminar entrevista</b> para que el audio se suba.</li>
       </ol>
     </div>
     <p class="meta" id="contador"></p>
@@ -109,7 +113,20 @@
     <div class="info"><b id="recTxt">Grabando 00:00</b><br><span id="recSub">NIP · GPS</span></div>
     <button id="terminar">Terminar entrevista</button>
   </div>
-  <iframe id="formulario" title="Cuestionario" allow="geolocation"></iframe>
+  <div id="panel">
+    <div class="card" style="text-align:center;">
+      <div class="lbl" id="relojLbl">Tiempo de grabación</div>
+      <div class="reloj" id="reloj">00:00</div>
+      <div class="meta" id="relojSub"></div>
+    </div>
+    <button class="big" id="abrirForm">Abrir cuestionario</button>
+    <div class="card col">
+      <div class="paso"><b class="n">1</b><span>Toca <b>Abrir cuestionario</b>. Se abre en otra pestaña con tus datos ya llenos.</span></div>
+      <div class="paso"><b class="n">2</b><span>Aplica la entrevista y toca <b>Enviar</b> hasta ver «Entrevista guardada».</span></div>
+      <div class="paso"><b class="n">3</b><span><b>Cierra esa pestaña</b> para regresar aquí y toca <b>Terminar entrevista</b>.</span></div>
+      <p class="meta" style="margin:4px 0 0;">No cierres esta pestaña ni cambies de app: aquí se está grabando.</p>
+    </div>
+  </div>
 </section>
 
 <!-- ===================== Ventanas ===================== -->
@@ -127,7 +144,7 @@
     <h2>¿Ya enviaste el cuestionario?</h2>
     <p class="meta" style="margin:0 0 6px;">Debe verse el mensaje «Entrevista guardada». Si no lo enviaste, regresa y termínalo primero.</p>
     <button class="verde" id="termSi">Sí, ya lo envié · terminar</button>
-    <button class="sec" id="termNo">Regresar al cuestionario</button>
+    <button class="sec" id="termNo">Todavía no · seguir</button>
   </div>
 </div>
 
@@ -349,31 +366,49 @@ function urlFormulario() {
   };
   const nuevos = new URLSearchParams();
   for (const [k, v] of url.searchParams.entries()) nuevos.append(k, k.startsWith('entry.') && v in valores ? valores[v] : v);
-  nuevos.set('embedded', 'true');
   url.search = nuevos.toString();
   return url.toString();
 }
 function abrirEntrevista() {
   const hoy = new Date().toDateString(), c = JSON.parse(localStorage.getItem('conteo') || '{}');
   localStorage.setItem('conteo', JSON.stringify({ dia: hoy, n: (c.dia === hoy ? c.n : 0) + 1 }));
-  $('formulario').src = urlFormulario();
+  sesion.url = urlFormulario();
+  $('abrirForm').textContent = 'Abrir cuestionario';
   $('pInicio').classList.remove('activa'); $('pEntrevista').classList.add('activa'); window.scrollTo(0, 0);
   const gps = sesion.pos ? 'GPS ' + Math.round(sesion.pos.coords.accuracy) + ' m' : 'SIN GPS';
   $('punto').classList.toggle('on', !!sesion.graba);
   clearInterval(reloj);
   const pintar = () => {
-    if (sesion.graba) { const s = Math.floor((Date.now() - sesion.t0) / 1000); $('recTxt').textContent = 'Grabando ' + dos(Math.floor(s / 60)) + ':' + dos(s % 60); }
-    else $('recTxt').textContent = alertaBarra ? 'Sin grabación (error de micrófono)' : 'Sin grabación';
+    if (sesion.graba) {
+      const s = Math.floor((Date.now() - sesion.t0) / 1000), t = dos(Math.floor(s / 60)) + ':' + dos(s % 60);
+      $('recTxt').textContent = 'Grabando ' + t; $('reloj').textContent = t; $('reloj').classList.add('on');
+      $('relojLbl').textContent = 'Tiempo de grabación';
+      $('relojSub').textContent = grabador && grabador.state === 'recording' ? 'El micrófono está activo.' : 'La grabación se detuvo.';
+    } else {
+      $('recTxt').textContent = alertaBarra ? 'Sin grabación (error de micrófono)' : 'Sin grabación';
+      $('reloj').textContent = '—'; $('reloj').classList.remove('on');
+      $('relojLbl').textContent = 'Sin grabación'; $('relojSub').textContent = alertaBarra || 'El entrevistado no autorizó grabar.';
+    }
     $('recSub').textContent = 'NIP ' + sesion.nip + ' · ' + gps + ' · inicio ' + sesion.inicio;
   };
   pintar(); reloj = setInterval(pintar, 1000);
 }
+$('abrirForm').onclick = () => {
+  if (!sesion || !sesion.url) return;
+  const w = window.open(sesion.url, '_blank');
+  if (!w) location.assign(sesion.url);   // si el navegador bloquea pestañas nuevas
+  sesion.abierto = true;
+  $('abrirForm').textContent = 'Volver a abrir el cuestionario';
+};
+// Al regresar a esta pestaña después de abrir el cuestionario, preguntar si ya se envió
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && sesion && sesion.abierto && $('pEntrevista').classList.contains('activa')) ver('vTerminar', true);
+});
 $('terminar').onclick = () => ver('vTerminar', true);
 $('termNo').onclick = () => ver('vTerminar', false);
 $('termSi').onclick = async () => {
   ver('vTerminar', false); clearInterval(reloj);
   $('pEntrevista').classList.remove('activa'); $('pInicio').classList.add('activa');
-  $('formulario').src = 'about:blank';
   if (sesion && sesion.graba) {
     estado('Guardando el audio…');
     await detenerGrabacion();
