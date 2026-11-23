@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14213D">
+<title>Iniciar entrevista · Teziutlán</title>
+<style>
+  :root { --ink:#14213D; --bg:#F6F7F4; --acc:#2E75B6; --ok:#1E7B4A; --warn:#B4510E; --err:#B42318; --soft:#4A5568; --rec:#D92D20; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  .pantalla { display: none; min-height: 100dvh; flex-direction: column; }
+  .pantalla.activa { display: flex; }
+  header { background: var(--ink); color: #F6F7F4; padding: 18px 20px 16px; padding-top: max(18px, env(safe-area-inset-top)); }
+  header small { display: block; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #8DB9E2; }
+  header h1 { margin: 4px 0 0; font-size: 22px; font-weight: 700; }
+  main { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 520px; width: 100%; margin: 0 auto; }
+  .card { background: #fff; border-radius: 14px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(20,33,61,.08); }
+  .nip { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .nip b { font-size: 28px; }
+  .lbl { font-size: 13px; color: var(--soft); text-transform: uppercase; letter-spacing: 1px; }
+  input[type=number] { width: 100%; font-size: 24px; padding: 12px 14px; border: 2px solid #C9D2DC; border-radius: 10px; margin-top: 8px; }
+  button { font: inherit; border: 0; border-radius: 14px; cursor: pointer; width: 100%; }
+  .big { background: var(--acc); color: #fff; font-size: 22px; font-weight: 700; padding: 22px 16px; }
+  .big:disabled { background: #9DB3C8; }
+  .verde { background: var(--ok); color: #fff; font-size: 20px; font-weight: 700; padding: 18px 16px; }
+  .sec { background: #E4E8EE; color: var(--ink); font-size: 17px; font-weight: 600; padding: 15px 16px; }
+  .link { background: none; color: var(--acc); font-size: 15px; padding: 4px; width: auto; text-decoration: underline; }
+  .estado { font-size: 17px; line-height: 1.45; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .err { color: var(--err); }
+  .meta { font-size: 14px; color: var(--soft); }
+  .hidden { display: none !important; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .pasos { margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.5; color: var(--soft); }
+  .leer { font-size: 20px; line-height: 1.45; background: #FFF7E6; border-left: 6px solid var(--warn); padding: 14px 16px; border-radius: 10px; }
+  footer { text-align: center; font-size: 12px; color: var(--soft); padding: 12px 20px max(16px, env(safe-area-inset-bottom)); }
+
+  /* Pantalla de entrevista */
+  #barra { position: sticky; top: 0; z-index: 5; background: var(--ink); color: #fff; display: flex; align-items: center;
+           gap: 10px; padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); }
+  #barra .info { flex: 1; min-width: 0; font-size: 15px; line-height: 1.3; }
+  #barra .info b { font-size: 17px; }
+  #barra button { width: auto; background: #F4C29B; color: var(--ink); font-weight: 700; font-size: 15px; padding: 12px 14px; border-radius: 10px; }
+  .punto { width: 14px; height: 14px; border-radius: 50%; background: #8A94A6; flex: none; }
+  .punto.on { background: var(--rec); animation: parpadeo 1.2s ease-in-out infinite; }
+  @keyframes parpadeo { 50% { opacity: .35; } }
+  #formulario { flex: 1; width: 100%; border: 0; background: #fff; min-height: 70dvh; }
+
+  /* Ventanas */
+  .velo { position: fixed; inset: 0; background: rgba(20,33,61,.55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+  .ventana { background: #fff; width: 100%; max-width: 520px; border-radius: 18px 18px 0 0; padding: 22px 20px max(20px, env(safe-area-inset-bottom)); }
+  .ventana h2 { margin: 0 0 10px; font-size: 21px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== Pantalla 1: inicio ===================== -->
+<section class="pantalla activa" id="pInicio">
+  <header><small>Encuesta Teziutlán · Noviembre 2026</small><h1>Iniciar entrevista</h1></header>
+  <main>
+    <div class="card hidden" id="cfgError"><p class="err" style="margin:0"></p></div>
+
+    <div class="card">
+      <div class="nip hidden" id="nipFijo">
+        <div><div class="lbl">Encuestador</div><b id="nipTxt"></b></div>
+        <button class="link" id="cambiarNip">Cambiar NIP</button>
+      </div>
+      <div id="nipCaptura">
+        <label class="lbl" for="nipInput">Escribe tu NIP</label>
+        <input type="number" id="nipInput" inputmode="numeric" min="1" max="9999" placeholder="Ej. 12">
+      </div>
+    </div>
+
+    <button class="big" id="iniciar">Iniciar entrevista</button>
+
+    <div class="card">
+      <div id="estado" class="estado meta">Presiona el botón frente a la vivienda, antes de empezar a preguntar.</div>
+      <div id="acciones" class="col hidden" style="margin-top:14px;">
+        <button class="sec" id="reintentar">Volver a intentar el GPS</button>
+        <button class="sec" id="continuar">Continuar así</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="pendCard">
+      <div class="lbl">Audios pendientes de subir</div>
+      <p class="estado" id="pendTxt" style="margin:8px 0 12px;"></p>
+      <button class="sec" id="subirPend">Subir ahora</button>
+    </div>
+
+    <div class="card">
+      <div class="lbl" style="margin-bottom:6px;">Antes de salir a campo</div>
+      <ol class="pasos">
+        <li>Activa la <b>ubicación</b> (alta precisión) y los <b>datos móviles</b>.</li>
+        <li>La primera vez, toca <b>Permitir</b> cuando pida ubicación y micrófono.</li>
+        <li>Durante la entrevista <b>no salgas de esta página</b> ni cambies de app: la grabación se detiene.</li>
+        <li>Al terminar, toca <b>Terminar entrevista</b> para que el audio se suba.</li>
+      </ol>
+    </div>
+    <p class="meta" id="contador"></p>
+  </main>
+  <footer>Opina Consultoría Estratégica</footer>
+</section>
+
+<!-- ===================== Pantalla 2: entrevista ===================== -->
+<section class="pantalla" id="pEntrevista">
+  <div id="barra">
+    <span class="punto" id="punto"></span>
+    <div class="info"><b id="recTxt">Grabando 00:00</b><br><span id="recSub">NIP · GPS</span></div>
+    <button id="terminar">Terminar entrevista</button>
+  </div>
+  <iframe id="formulario" title="Cuestionario" allow="geolocation"></iframe>
+</section>
+
+<!-- ===================== Ventanas ===================== -->
+<div class="velo hidden" id="vConsent">
+  <div class="ventana col">
+    <h2>Autorización de grabación</h2>
+    <div class="leer">Lea al entrevistado: <b>«Para control de calidad, esta entrevista se grabará en audio. La grabación es confidencial y solo la escucha el equipo de supervisión. ¿Está de acuerdo?»</b></div>
+    <button class="verde" id="consSi">Sí acepta · grabar</button>
+    <button class="sec" id="consNo">No acepta · continuar sin grabar</button>
+  </div>
+</div>
+
+<div class="velo hidden" id="vTerminar">
+  <div class="ventana col">
+    <h2>¿Ya enviaste el cuestionario?</h2>
+    <p class="meta" style="margin:0 0 6px;">Debe verse el mensaje «Entrevista guardada». Si no lo enviaste, regresa y termínalo primero.</p>
+    <button class="verde" id="termSi">Sí, ya lo envié · terminar</button>
+    <button class="sec" id="termNo">Regresar al cuestionario</button>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURACIÓN
+   PLANTILLA: la "PLANTILLA para inicio.html" del Registro de ejecución de
+              Apps Script (o de la pestaña Config de la hoja).
+   AUDIO_URL: la "URL de la aplicación web" (termina en /exec) que da
+              Apps Script en Implementar → Nueva implementación.
+   ===================================================================== */
+const PLANTILLA = 'https://docs.google.com/forms/d/e/1FAIpQLSd3Y5X-mgkBpSq2O2OyEUy7F2T4VlZjtEALVrcvlvOEf9ADKQ/viewform?usp=pp_url&entry.930224727=9999&entry.1644281443=LAT&entry.573867934=LON&entry.752616366=ACC&entry.45272386=INICIO&entry.636640146=GRAB';
+const AUDIO_URL = 'https://drive.google.com/drive/folders/1k_3YR9ATe9jlO_JZyB4br1XMzeHp1fSm';
+
+const PH = { nip: '9999', lat: 'LAT', lon: 'LON', acc: 'ACC', ini: 'INICIO', grab: 'GRAB' };
+const PRECISION_BUENA = 30, PRECISION_ACEPTABLE = 100, ESPERA_MAX_MS = 20000;
+const BITRATE = 24000;   // bits por segundo; calidad de voz (~1.8 MB por cada 10 minutos)
+
+const $ = (id) => document.getElementById(id);
+const ver = (id, si) => $(id).classList.toggle('hidden', !si);
+const estado = (html, cls) => { $('estado').className = 'estado ' + (cls || 'meta'); $('estado').innerHTML = html; };
+const dos = (n) => String(n).padStart(2, '0');
+const hhmmss = (d) => dos(d.getHours()) + ':' + dos(d.getMinutes()) + ':' + dos(d.getSeconds());
+const fechaLocal = (d) => d.getFullYear() + '-' + dos(d.getMonth() + 1) + '-' + dos(d.getDate());
+
+let sesion = null;          // datos de la entrevista en curso
+let mejor = null, watchId = null, temporizador = null;
+let grabador = null, flujo = null, wakeLock = null, reloj = null;
+
+/* ---------------- Almacenamiento local (IndexedDB) ----------------
+   Los pedazos del audio se guardan mientras se graba; si la página se
+   cierra por error, al abrirla de nuevo se recuperan como "pendientes". */
+const DB = { db: null };
+function abrirDB() {
+  return new Promise((ok, mal) => {
+    const r = indexedDB.open('encuesta_teziutlan', 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      db.createObjectStore('sesiones', { keyPath: 'id' });
+      const t = db.createObjectStore('trozos', { autoIncrement: true });
+      t.createIndex('sesion', 'sesion');
+      db.createObjectStore('pendientes', { keyPath: 'id' });
+    };
+    r.onsuccess = () => { DB.db = r.result; ok(); };
+    r.onerror = () => mal(r.error);
+  });
+}
+function tx(stores, modo, fn) {
+  return new Promise((ok, mal) => {
+    const t = DB.db.transaction(stores, modo); let res;
+    t.oncomplete = () => ok(res); t.onerror = () => mal(t.error);
+    res = fn(t);
+  });
+}
+const req = (r) => new Promise((ok, mal) => { r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error); });
+async function guardarTrozo(id, blob) { await tx(['trozos'], 'readwrite', t => t.objectStore('trozos').add({ sesion: id, blob })); }
+async function juntarSesion(id) {
+  // Une los trozos de una sesión en un solo archivo pendiente y limpia lo temporal
+  const s = await tx(['sesiones'], 'readonly', t => req(t.objectStore('sesiones').get(id)));
+  const trozos = await new Promise((ok, mal) => {
+    const t = DB.db.transaction(['trozos'], 'readonly');
+    const r = t.objectStore('trozos').index('sesion').getAll(id);
+    r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error);
+  });
+  if (s && trozos.length) {
+    const blob = new Blob(trozos.map(x => x.blob), { type: s.mime });
+    await tx(['pendientes'], 'readwrite', t => t.objectStore('pendientes').put({ id, meta: s, blob }));
+  }
+  await tx(['trozos', 'sesiones'], 'readwrite', t => {
+    const st = t.objectStore('trozos');
+    st.index('sesion').openCursor(IDBKeyRange.only(id)).onsuccess = (e) => { const c = e.target.result; if (c) { c.delete(); c.continue(); } };
+    t.objectStore('sesiones').delete(id);
+  });
+}
+async function recuperarHuerfanas() {
+  const ses = await tx(['sesiones'], 'readonly', t => req(t.objectStore('sesiones').getAll()));
+  for (const s of ses) await juntarSesion(s.id);
+}
+
+/* ---------------- Subida de audios ---------------- */
+function aBase64(blob) {
+  return new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = mal; r.readAsDataURL(blob); });
+}
+let subiendo = false;
+async function subirPendientes() {
+  if (subiendo || !DB.db) return;
+  if (AUDIO_URL.indexOf('http') !== 0) { await pintarPendientes(); return; }
+  subiendo = true;
+  try {
+    const lista = await tx(['pendientes'], 'readonly', t => req(t.objectStore('pendientes').getAll()));
+    for (const p of lista) {
+      $('pendTxt').textContent = 'Subiendo audio de las ' + p.meta.inicio + '…';
+      try {
+        const cuerpo = JSON.stringify({ nip: p.meta.nip, fecha: p.meta.fecha, inicio: p.meta.inicio,
+          segundos: p.meta.segundos || '', mime: p.meta.mime, data: await aBase64(p.blob) });
+        const r = await fetch(AUDIO_URL, { method: 'POST', body: cuerpo });
+        const j = await r.json();
+        if (j.ok) await tx(['pendientes'], 'readwrite', t => t.objectStore('pendientes').delete(p.id));
+        else throw new Error(j.error || 'Error del servidor');
+      } catch (e) { break; }  // sin señal: se reintenta después
+    }
+  } finally { subiendo = false; await pintarPendientes(); }
+}
+async function pintarPendientes() {
+  if (!DB.db) return;
+  const n = await tx(['pendientes'], 'readonly', t => req(t.objectStore('pendientes').count()));
+  ver('pendCard', n > 0);
+  $('pendTxt').textContent = n === 1 ? 'Hay 1 audio guardado en este celular sin subir.' : 'Hay ' + n + ' audios guardados en este celular sin subir.';
+  if (AUDIO_URL.indexOf('http') !== 0) $('pendTxt').textContent += ' (Falta configurar AUDIO_URL.)';
+}
+$('subirPend').onclick = subirPendientes;
+window.addEventListener('online', subirPendientes);
+
+/* ---------------- NIP ---------------- */
+function nipActual() { return (new URLSearchParams(location.search).get('nip') || localStorage.getItem('nip') || '').trim(); }
+function pintarNip() {
+  const nip = nipActual();
+  if (nip) { localStorage.setItem('nip', nip); $('nipTxt').textContent = 'NIP ' + nip; }
+  ver('nipFijo', !!nip); ver('nipCaptura', !nip);
+  const hoy = new Date().toDateString(), c = JSON.parse(localStorage.getItem('conteo') || '{}');
+  $('contador').textContent = c.dia === hoy && c.n ? 'Entrevistas iniciadas hoy en este celular: ' + c.n : '';
+}
+$('cambiarNip').onclick = () => { localStorage.removeItem('nip'); history.replaceState(null, '', location.pathname); pintarNip(); $('nipInput').focus(); };
+
+/* ---------------- GPS ---------------- */
+function iniciar() {
+  if (!nipActual()) {
+    const v = $('nipInput').value.trim();
+    if (!v || +v < 1 || +v > 9999) { estado('Escribe tu NIP (número del 1 al 9999).', 'err'); $('nipInput').focus(); return; }
+    localStorage.setItem('nip', v); pintarNip();
+  }
+  const ahora = new Date();
+  sesion = { id: 'S' + ahora.getTime(), nip: nipActual(), fecha: fechaLocal(ahora), inicio: hhmmss(ahora), pos: null, graba: false };
+  if (!('geolocation' in navigator)) { estado('Este navegador no permite obtener la ubicación.', 'err'); ver('acciones', true); $('continuar').textContent = 'Continuar sin GPS (quedará marcada)'; return; }
+  mejor = null; $('iniciar').disabled = true; ver('acciones', false);
+  estado('Buscando tu ubicación… mantente al aire libre unos segundos.');
+  watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0, timeout: ESPERA_MAX_MS });
+  temporizador = setTimeout(terminarBusqueda, ESPERA_MAX_MS);
+}
+function onPos(p) {
+  if (!mejor || p.coords.accuracy < mejor.coords.accuracy) mejor = p;
+  estado('Señal encontrada · precisión <b>' + Math.round(mejor.coords.accuracy) + ' m</b>. Afinando…');
+  if (mejor.coords.accuracy <= PRECISION_BUENA) terminarBusqueda();
+}
+function onErr(e) {
+  detenerGPS();
+  if (mejor) { terminarBusqueda(true); return; }
+  const msg = { 1: 'No diste permiso de ubicación. Permite la ubicación para esta página en la configuración del navegador y vuelve a intentar.',
+                2: 'No se pudo obtener la ubicación. Revisa que el GPS esté encendido.', 3: 'El GPS tardó demasiado en responder.' }[e.code] || 'Error de ubicación.';
+  estado(msg, 'err'); ver('acciones', true); $('continuar').textContent = 'Continuar sin GPS (quedará marcada)';
+}
+function detenerGPS() { if (watchId !== null) navigator.geolocation.clearWatch(watchId); clearTimeout(temporizador); watchId = null; $('iniciar').disabled = false; }
+function terminarBusqueda(forzar) {
+  if (watchId === null && !forzar) return;
+  detenerGPS();
+  if (!mejor) { estado('No se obtuvo señal de GPS.', 'err'); ver('acciones', true); $('continuar').textContent = 'Continuar sin GPS (quedará marcada)'; return; }
+  const acc = Math.round(mejor.coords.accuracy);
+  if (acc <= PRECISION_ACEPTABLE) { sesion.pos = mejor; pedirConsentimiento(); return; }
+  estado('La precisión es baja (<b>' + acc + ' m</b>). Intenta de nuevo al aire libre o continúa así.', 'warn');
+  ver('acciones', true); $('continuar').textContent = 'Continuar con precisión de ' + acc + ' m';
+}
+$('reintentar').onclick = iniciar;
+$('continuar').onclick = () => { sesion.pos = mejor; pedirConsentimiento(); };
+
+/* ---------------- Consentimiento y grabación ---------------- */
+function pedirConsentimiento() { ver('acciones', false); estado('Ubicación lista.', 'ok'); ver('vConsent', true); }
+$('consNo').onclick = () => { ver('vConsent', false); sesion.graba = false; abrirEntrevista(); };
+$('consSi').onclick = async () => {
+  ver('vConsent', false); sesion.graba = true;
+  try { await empezarGrabacion(); }
+  catch (e) { alertaBarra = 'No se pudo usar el micrófono: la entrevista sigue sin audio.'; sesion.graba = false; sesion.errorMic = true; }
+  abrirEntrevista();
+};
+let alertaBarra = '';
+
+function elegirFormato() {
+  const opciones = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  if (!window.MediaRecorder) return '';
+  return opciones.find(m => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
+}
+async function empezarGrabacion() {
+  flujo = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  const mime = elegirFormato();
+  grabador = new MediaRecorder(flujo, mime ? { mimeType: mime, audioBitsPerSecond: BITRATE } : { audioBitsPerSecond: BITRATE });
+  sesion.mime = grabador.mimeType || mime || 'audio/webm';
+  await tx(['sesiones'], 'readwrite', t => t.objectStore('sesiones').put({ id: sesion.id, nip: sesion.nip, fecha: sesion.fecha, inicio: sesion.inicio, mime: sesion.mime }));
+  grabador.ondataavailable = (e) => { if (e.data && e.data.size) guardarTrozo(sesion.id, e.data); };
+  grabador.start(10000);   // guarda un trozo cada 10 s
+  sesion.t0 = Date.now();
+  pedirPantallaEncendida();
+}
+async function pedirPantallaEncendida() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && grabador && grabador.state === 'recording') pedirPantallaEncendida(); });
+window.addEventListener('beforeunload', (e) => { if (grabador && grabador.state === 'recording') { e.preventDefault(); e.returnValue = ''; } });
+
+function detenerGrabacion() {
+  return new Promise((ok) => {
+    if (!grabador || grabador.state === 'inactive') return ok();
+    grabador.onstop = async () => {
+      if (flujo) flujo.getTracks().forEach(t => t.stop());
+      try { if (wakeLock) await wakeLock.release(); } catch (e) {}
+      // pequeña espera para que el último trozo termine de guardarse
+      setTimeout(ok, 600);
+    };
+    grabador.stop();
+  });
+}
+
+/* ---------------- Entrevista (formulario dentro de la página) ---------------- */
+function urlFormulario() {
+  const url = new URL(PLANTILLA), p = sesion.pos;
+  const valores = {
+    [PH.nip]: sesion.nip,
+    [PH.lat]: p ? p.coords.latitude.toFixed(6) : 'SIN GPS',
+    [PH.lon]: p ? p.coords.longitude.toFixed(6) : 'SIN GPS',
+    [PH.acc]: p ? String(Math.round(p.coords.accuracy)) : 'SIN GPS',
+    [PH.ini]: sesion.inicio,
+    [PH.grab]: sesion.graba || sesion.errorMic ? 'SÍ' : 'NO'
+  };
+  const nuevos = new URLSearchParams();
+  for (const [k, v] of url.searchParams.entries()) nuevos.append(k, k.startsWith('entry.') && v in valores ? valores[v] : v);
+  nuevos.set('embedded', 'true');
+  url.search = nuevos.toString();
+  return url.toString();
+}
+function abrirEntrevista() {
+  const hoy = new Date().toDateString(), c = JSON.parse(localStorage.getItem('conteo') || '{}');
+  localStorage.setItem('conteo', JSON.stringify({ dia: hoy, n: (c.dia === hoy ? c.n : 0) + 1 }));
+  $('formulario').src = urlFormulario();
+  $('pInicio').classList.remove('activa'); $('pEntrevista').classList.add('activa'); window.scrollTo(0, 0);
+  const gps = sesion.pos ? 'GPS ' + Math.round(sesion.pos.coords.accuracy) + ' m' : 'SIN GPS';
+  $('punto').classList.toggle('on', !!sesion.graba);
+  clearInterval(reloj);
+  const pintar = () => {
+    if (sesion.graba) { const s = Math.floor((Date.now() - sesion.t0) / 1000); $('recTxt').textContent = 'Grabando ' + dos(Math.floor(s / 60)) + ':' + dos(s % 60); }
+    else $('recTxt').textContent = alertaBarra ? 'Sin grabación (error de micrófono)' : 'Sin grabación';
+    $('recSub').textContent = 'NIP ' + sesion.nip + ' · ' + gps + ' · inicio ' + sesion.inicio;
+  };
+  pintar(); reloj = setInterval(pintar, 1000);
+}
+$('terminar').onclick = () => ver('vTerminar', true);
+$('termNo').onclick = () => ver('vTerminar', false);
+$('termSi').onclick = async () => {
+  ver('vTerminar', false); clearInterval(reloj);
+  $('pEntrevista').classList.remove('activa'); $('pInicio').classList.add('activa');
+  $('formulario').src = 'about:blank';
+  if (sesion && sesion.graba) {
+    estado('Guardando el audio…');
+    await detenerGrabacion();
+    const segundos = Math.round((Date.now() - sesion.t0) / 1000);
+    await tx(['sesiones'], 'readwrite', t => t.objectStore('sesiones').put({ id: sesion.id, nip: sesion.nip, fecha: sesion.fecha, inicio: sesion.inicio, mime: sesion.mime, segundos }));
+    await juntarSesion(sesion.id);
+    estado('Entrevista terminada. Subiendo el audio…', 'ok');
+    await subirPendientes();
+    const n = await tx(['pendientes'], 'readonly', t => req(t.objectStore('pendientes').count()));
+    estado(n ? 'Entrevista terminada. El audio quedó guardado en el celular y se subirá cuando haya señal.' : 'Entrevista terminada y audio subido. Listo para la siguiente vivienda.', n ? 'warn' : 'ok');
+  } else {
+    estado('Entrevista terminada. Listo para la siguiente vivienda.', 'ok');
+  }
+  grabador = null; flujo = null; sesion = null; alertaBarra = '';
+};
+
+/* ---------------- Arranque ---------------- */
+$('iniciar').onclick = iniciar;
+(function revisarConfig() {
+  const faltan = [];
+  if (PLANTILLA.indexOf('http') !== 0) faltan.push('PLANTILLA');
+  if (AUDIO_URL.indexOf('http') !== 0) faltan.push('AUDIO_URL');
+  if (faltan.length) { ver('cfgError', true); $('cfgError').firstElementChild.innerHTML = '<b>Falta configurar:</b> ' + faltan.join(' y ') + ' en este archivo.'; }
+  if (PLANTILLA.indexOf('http') !== 0) $('iniciar').disabled = true;
+})();
+pintarNip();
+abrirDB().then(recuperarHuerfanas).then(subirPendientes).catch(() => {});
+</script>
+</body>
+</html>
