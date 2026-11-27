@@ -65,7 +65,7 @@
 
 <!-- ===================== Pantalla 1: inicio ===================== -->
 <section class="pantalla activa" id="pInicio">
-  <header><small>Encuesta Teziutlán · Noviembre 2026 · v11</small><h1>Iniciar entrevista</h1></header>
+  <header><small>Encuesta Teziutlán · Noviembre 2026 · v11.1</small><h1>Iniciar entrevista</h1></header>
   <main>
     <div class="card hidden" id="cfgError"><p class="err" style="margin:0"></p></div>
 
@@ -112,7 +112,7 @@
     </details>
     <p class="meta" id="contador"></p>
   </main>
-  <footer>Opina Consultoría Estratégica · versión 11 (27-nov-2026)</footer>
+  <footer>Opina Consultoría Estratégica · versión 11.1 (27-nov-2026)</footer>
 </section>
 
 <!-- ===================== Pantalla 2: entrevista ===================== -->
@@ -160,6 +160,9 @@
 <script>
 /* Muestra en pantalla cualquier error, para diagnosticar celulares con problemas */
 window.onerror = function (msg, src, lin) {
+  /* "Script error." sin línea viene de scripts que mete el propio navegador
+     (anuncios o extensiones de Huawei, Xiaomi, etc.), no de esta página: se ignora. */
+  if (!lin || String(msg).indexOf('Script error') === 0) return true;
   try {
     var c = document.getElementById('cfgError');
     c.className = 'card';
