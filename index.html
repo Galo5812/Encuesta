@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14213D">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="color-scheme" content="light only">
 <title>Iniciar entrevista · Teziutlán</title>
 <style>
   :root { --ink:#14213D; --bg:#F6F7F4; --acc:#2E75B6; --ok:#1E7B4A; --warn:#B4510E; --err:#B42318; --soft:#4A5568; --rec:#D92D20; }
@@ -61,7 +65,7 @@
 
 <!-- ===================== Pantalla 1: inicio ===================== -->
 <section class="pantalla activa" id="pInicio">
-  <header><small>Encuesta Teziutlán · Noviembre 2026</small><h1>Iniciar entrevista</h1></header>
+  <header><small>Encuesta Teziutlán · Noviembre 2026 · v11</small><h1>Iniciar entrevista</h1></header>
   <main>
     <div class="card hidden" id="cfgError"><p class="err" style="margin:0"></p></div>
 
@@ -101,9 +105,14 @@
         <li>Al enviar el cuestionario, cierra su pestaña y toca <b>Terminar entrevista</b> para que el audio se suba.</li>
       </ol>
     </div>
+    <details class="card" id="planB">
+      <summary class="lbl" style="cursor:pointer;">¿No funciona la grabación o el GPS? (plan B)</summary>
+      <p class="meta" style="margin:10px 0;">Úsalo solo si «Iniciar entrevista» falla. El cuestionario se abre con tu NIP, <b>sin GPS y sin grabación</b>. Avisa a tu supervisor para anotarlo en Validación.</p>
+      <button class="sec" id="btnPlanB">Abrir cuestionario sin grabación</button>
+    </details>
     <p class="meta" id="contador"></p>
   </main>
-  <footer>Opina Consultoría Estratégica</footer>
+  <footer>Opina Consultoría Estratégica · versión 11 (27-nov-2026)</footer>
 </section>
 
 <!-- ===================== Pantalla 2: entrevista ===================== -->
@@ -149,6 +158,16 @@
 </div>
 
 <script>
+/* Muestra en pantalla cualquier error, para diagnosticar celulares con problemas */
+window.onerror = function (msg, src, lin) {
+  try {
+    var c = document.getElementById('cfgError');
+    c.className = 'card';
+    c.firstElementChild.innerHTML = '<b>Error en este celular:</b> ' + msg + ' (línea ' + lin + '). Toma captura y mándala al supervisor. Puedes usar el plan B de abajo.';
+  } catch (e) {}
+};
+</script>
+<script>
 /* =====================================================================
    CONFIGURACIÓN
    PLANTILLA: la "PLANTILLA para inicio.html" del Registro de ejecución de
@@ -163,6 +182,11 @@ const PH = { nip: '9999', lat: 'LAT', lon: 'LON', acc: 'ACC', ini: 'INICIO', gra
 const PRECISION_BUENA = 30, PRECISION_ACEPTABLE = 100, ESPERA_MAX_MS = 20000;
 const BITRATE = 24000;   // bits por segundo; calidad de voz (~1.8 MB por cada 10 minutos)
 
+const LS = {
+  get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+  del: (k) => { try { localStorage.removeItem(k); } catch (e) {} }
+};
 const $ = (id) => document.getElementById(id);
 const ver = (id, si) => $(id).classList.toggle('hidden', !si);
 const estado = (html, cls) => { $('estado').className = 'estado ' + (cls || 'meta'); $('estado').innerHTML = html; };
@@ -259,22 +283,22 @@ $('subirPend').onclick = subirPendientes;
 window.addEventListener('online', subirPendientes);
 
 /* ---------------- NIP ---------------- */
-function nipActual() { return (new URLSearchParams(location.search).get('nip') || localStorage.getItem('nip') || '').trim(); }
+function nipActual() { return (new URLSearchParams(location.search).get('nip') || LS.get('nip') || '').trim(); }
 function pintarNip() {
   const nip = nipActual();
-  if (nip) { localStorage.setItem('nip', nip); $('nipTxt').textContent = 'NIP ' + nip; }
+  if (nip) { LS.set('nip', nip); $('nipTxt').textContent = 'NIP ' + nip; }
   ver('nipFijo', !!nip); ver('nipCaptura', !nip);
-  const hoy = new Date().toDateString(), c = JSON.parse(localStorage.getItem('conteo') || '{}');
+  const hoy = new Date().toDateString(), c = JSON.parse(LS.get('conteo') || '{}');
   $('contador').textContent = c.dia === hoy && c.n ? 'Entrevistas iniciadas hoy en este celular: ' + c.n : '';
 }
-$('cambiarNip').onclick = () => { localStorage.removeItem('nip'); history.replaceState(null, '', location.pathname); pintarNip(); $('nipInput').focus(); };
+$('cambiarNip').onclick = () => { LS.del('nip'); history.replaceState(null, '', location.pathname); pintarNip(); $('nipInput').focus(); };
 
 /* ---------------- GPS ---------------- */
 function iniciar() {
   if (!nipActual()) {
     const v = $('nipInput').value.trim();
     if (!v || +v < 1 || +v > 9999) { estado('Escribe tu NIP (número del 1 al 9999).', 'err'); $('nipInput').focus(); return; }
-    localStorage.setItem('nip', v); pintarNip();
+    LS.set('nip', v); pintarNip();
   }
   const ahora = new Date();
   sesion = { id: 'S' + ahora.getTime(), nip: nipActual(), fecha: fechaLocal(ahora), inicio: hhmmss(ahora), pos: null, graba: false };
@@ -370,8 +394,8 @@ function urlFormulario() {
   return url.toString();
 }
 function abrirEntrevista() {
-  const hoy = new Date().toDateString(), c = JSON.parse(localStorage.getItem('conteo') || '{}');
-  localStorage.setItem('conteo', JSON.stringify({ dia: hoy, n: (c.dia === hoy ? c.n : 0) + 1 }));
+  const hoy = new Date().toDateString(), c = JSON.parse(LS.get('conteo') || '{}');
+  LS.set('conteo', JSON.stringify({ dia: hoy, n: (c.dia === hoy ? c.n : 0) + 1 }));
   sesion.url = urlFormulario();
   $('abrirForm').textContent = 'Abrir cuestionario';
   $('pInicio').classList.remove('activa'); $('pEntrevista').classList.add('activa'); window.scrollTo(0, 0);
@@ -427,6 +451,17 @@ $('termSi').onclick = async () => {
 
 /* ---------------- Arranque ---------------- */
 $('iniciar').onclick = iniciar;
+$('btnPlanB').onclick = function () {
+  const nip = nipActual() || ($('nipInput').value || '').trim();
+  if (!nip) { alert('Primero escribe tu NIP.'); $('nipInput').focus(); return; }
+  LS.set('nip', nip);
+  const d = new Date(), url = new URL(PLANTILLA);
+  const valores = { [PH.nip]: nip, [PH.lat]: 'SIN GPS', [PH.lon]: 'SIN GPS', [PH.acc]: 'SIN GPS', [PH.ini]: hhmmss(d), [PH.grab]: 'NO' };
+  const nuevos = new URLSearchParams();
+  for (const [k, v] of url.searchParams.entries()) nuevos.append(k, k.indexOf('entry.') === 0 && v in valores ? valores[v] : v);
+  url.search = nuevos.toString();
+  window.location.href = url.toString();
+};
 (function revisarConfig() {
   const faltan = [];
   if (PLANTILLA.indexOf('http') !== 0) faltan.push('PLANTILLA');
